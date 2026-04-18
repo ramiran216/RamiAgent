@@ -37,3 +37,10 @@ replay_pid*
 .classpath
 .project
 .settings/
+
+# github files
+.github/
+
+# VS Code files
+.vscode/
+
