@@ -89,19 +89,33 @@ Hello, Spring Boot!
 ### 2. Deepseek 智能对话
 
 ```
-GET http://localhost:8080/deepseek?message=你好
+GET http://localhost:8080/deepseek?message=你好&conversationId=user-123
 ```
 
 **参数：**
 - `message` (可选): 用户提问内容，默认值为 "你好，请介绍一下你自己"
+- `conversationId` (可选): 对话会话ID，用于管理多个独立的对话线程，默认值为 "default-conversation"
 
 **返回：** 流式返回 AI 对话内容
 
 **示例：**
 
 ```bash
+# 使用默认会话
 curl "http://localhost:8080/deepseek?message=你好，你叫什么名字？"
+
+# 指定特定的会话ID
+curl "http://localhost:8080/deepseek?message=你好&conversationId=alice-session-001"
+
+# 带有会话ID的多轮对话
+curl "http://localhost:8080/deepseek?message=我是小红&conversationId=user-123"
+curl "http://localhost:8080/deepseek?message=记住我的名字&conversationId=user-123"
 ```
+
+**对话记忆说明：**
+- 同一个 `conversationId` 的消息会被系统保存，供后续对话参考
+- 每个 `conversationId` 独立维护最近5条消息的记忆
+- 不同的 `conversationId` 之间相互隔离，互不影响
 
 ## 📁 项目结构
 
