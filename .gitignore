@@ -44,3 +44,6 @@ replay_pid*
 # VS Code files
 .vscode/
 
+# API keys and secrets
+deepseek.properties
+
