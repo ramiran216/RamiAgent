@@ -55,12 +55,22 @@ public class UserProfileService {
             return;
         }
 
+        // Include existing profile summary in the prompt to keep important user attributes that may not be mentioned in recent messages but are still relevant to the user's profile. This helps prevent the profile from losing important information that may not be mentioned frequently in recent interactions but is still relevant to the user's identity and preferences.
+        getUserProfileSummary(conversationId).ifPresent(userProfile -> {
+            messages.add(userProfile);
+        });
+
         String summary = summarizeProfile(messages);
         if (summary == null || summary.isBlank()) {
             return;
         }
 
         userProfileRepository.save(new UserProfile(conversationId, summary.trim(), LocalDateTime.now()));
+
+        // Delete earliest messages after summarization to keep the profile up to date with recent interactions and prevent the profile from being based on stale data
+        jdbcTemplate.update(
+                "DELETE FROM SPRING_AI_CHAT_MEMORY WHERE CONVERSATION_ID = ? AND CONTENT IN (SELECT CONTENT FROM SPRING_AI_CHAT_MEMORY WHERE CONVERSATION_ID = ? ORDER BY TIMESTAMP ASC FETCH FIRST 10 ROWS ONLY)",
+                conversationId, conversationId);
     }
 
     private List<String> loadEarliestMessages(String conversationId) {
@@ -72,7 +82,7 @@ public class UserProfileService {
 
     private String summarizeProfile(List<String> messages) {
         String chatHistory = String.join("\n", messages);
-        String prompt = "Extract the user's interests, hobbies, and basic profile information from the following conversation history. " +
+        String prompt = "Extract the user's names, interests, hobbies, and basic profile information from the following conversation history. " +
                 "Return a concise summary of user tags and characteristics.\n\nConversation:\n" + chatHistory;
 
         Flux<String> content = chatClient.prompt()
