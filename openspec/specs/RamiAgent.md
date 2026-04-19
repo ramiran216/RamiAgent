@@ -23,4 +23,6 @@ rules: |
 
   task:
    - 每个Task必须遵循功能分支开发标准流程，禁止在主干上直接修改代码
+   - 保持每个文件代码生成的整洁性，比如一定要去掉无用的imports、要有必要的注释
+   - 除非必要不要引入新的依赖，尽量使用Spring生态的工具、Annotation等
    - 每个change archive后，必须提炼并总结该change中需要纳入config.yaml的内容，比如新增架构模式、技术栈变更，工程红线补充等。经用户确认后更新至config.yaml

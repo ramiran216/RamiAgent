@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Flux;
 
+import java.util.Optional;
+
 @RestController
 public class HelloController {
     
@@ -24,11 +26,12 @@ public class HelloController {
     @Autowired
     private JdbcChatMemoryRepository chatMemoryRepository;
     
-    private ChatClient.Builder chatClientBuilder;
+    private final ChatClient.Builder chatClientBuilder;
+    private final UserProfileService userProfileService;
 
-    public HelloController(ChatClient.Builder chatClientBuilder) {
-
+    public HelloController(ChatClient.Builder chatClientBuilder, UserProfileService userProfileService) {
         this.chatClientBuilder = chatClientBuilder;
+        this.userProfileService = userProfileService;
     }
 
     @SuppressWarnings("null")
@@ -56,10 +59,14 @@ public class HelloController {
     public Flux<String> deepseek(
             @RequestParam(defaultValue = "你好，请介绍一下你自己") @NonNull String message,
             @RequestParam(defaultValue = "qianqian") String conversationId) {
-        return chatClient.prompt()
-            .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
-            .user(message)
-            .stream()
-            .content();
+        var prompt = chatClient.prompt()
+                .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId));
+
+        Optional<String> profileSummary = userProfileService.getUserProfileSummary(conversationId);
+        profileSummary.ifPresent(prompt::system);
+
+        return prompt.user(message)
+                .stream()
+                .content();
     }
 }
