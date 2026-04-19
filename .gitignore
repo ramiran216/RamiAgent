@@ -47,3 +47,6 @@ replay_pid*
 # API keys and secrets
 deepseek.properties
 
+# Database files
+db/
+
