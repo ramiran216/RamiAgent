@@ -35,6 +35,16 @@ export DEEPSEEK_API_KEY="your-api-key-here"
 spring.ai.deepseek.api-key=your-api-key-here
 ```
 
+### 3. 配置数据库路径（可选）
+
+默认情况下，数据库文件存储在项目目录的 `db` 文件夹中。如需自定义数据库位置：
+
+```bash
+export DB_PATH="/path/to/your/database"
+```
+
+如果不设置 `DB_PATH` 环境变量，将使用默认路径：`/workspaces/RamiAgent/db/ramiagent`
+
 ## 📦 安装与编译
 
 ### 克隆项目
@@ -166,7 +176,7 @@ server.servlet.encoding.force=true
 server.servlet.encoding.charset=UTF-8
 
 # HSQLDB 数据库配置
-spring.datasource.url=jdbc:hsqldb:file:./db/ramiagent
+spring.datasource.url=jdbc:hsqldb:file:${DB_PATH:/workspaces/RamiAgent/db/ramiagent}
 spring.datasource.driver-class-name=org.hsqldb.jdbc.JDBCDriver
 spring.datasource.username=sa
 spring.datasource.password=
