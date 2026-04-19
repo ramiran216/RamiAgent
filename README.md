@@ -164,6 +164,17 @@ spring.ai.deepseek.chat.options.model=deepseek-chat
 # UTF-8 编码
 server.servlet.encoding.force=true
 server.servlet.encoding.charset=UTF-8
+
+# HSQLDB 数据库配置
+spring.datasource.url=jdbc:hsqldb:file:./db/ramiagent
+spring.datasource.driver-class-name=org.hsqldb.jdbc.JDBCDriver
+spring.datasource.username=sa
+spring.datasource.password=
+
+# JPA 配置
+spring.jpa.database-platform=org.hibernate.dialect.HSQLDialect
+spring.jpa.hibernate.ddl-auto=create-drop
+spring.jpa.show-sql=true
 ```
 
 ## 🐛 常见问题
