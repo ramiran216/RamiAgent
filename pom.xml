@@ -32,6 +32,11 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-deepseek-spring-boot-starter</artifactId>
+                <version>${spring-ai.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
