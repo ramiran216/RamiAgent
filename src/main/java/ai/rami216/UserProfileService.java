@@ -1,6 +1,7 @@
 package ai.rami216;
 
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -8,20 +9,24 @@ import reactor.core.publisher.Flux;
 
 import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class UserProfileService {
 
     private final JdbcTemplate jdbcTemplate;
     private final UserProfileRepository userProfileRepository;
+    private final ChatMemoryRepository chatMemoryRepository;
     private final ChatClient chatClient;
 
     public UserProfileService(JdbcTemplate jdbcTemplate, UserProfileRepository userProfileRepository,
-                              ChatClient.Builder chatClientBuilder) {
+                              ChatMemoryRepository chatMemoryRepository, ChatClient.Builder chatClientBuilder) {
         this.jdbcTemplate = jdbcTemplate;
         this.userProfileRepository = userProfileRepository;
+        this.chatMemoryRepository = chatMemoryRepository;
         this.chatClient = chatClientBuilder.build();
     }
 
@@ -36,7 +41,7 @@ public class UserProfileService {
 
     @Scheduled(fixedDelayString = "${userprofile.refresh.delay:PT5M}")
     public void refreshAllProfiles() {
-        List<String> conversationIds = userProfileRepository.findAllConversationIds();
+        List<String> conversationIds = discoverConversationIds();
         for (String conversationId : conversationIds) {
             try {
                 refreshProfile(conversationId);
@@ -49,39 +54,40 @@ public class UserProfileService {
         }
     }
 
+    private List<String> discoverConversationIds() {
+        return chatMemoryRepository.findConversationIds();
+    }
+
     public void refreshProfile(String conversationId) {
         List<String> messages = loadEarliestMessages(conversationId);
         if (messages.isEmpty()) {
             return;
         }
 
-        // Include existing profile summary in the prompt to keep important user attributes that may not be mentioned in recent messages but are still relevant to the user's profile. This helps prevent the profile from losing important information that may not be mentioned frequently in recent interactions but is still relevant to the user's identity and preferences.
-        getUserProfileSummary(conversationId).ifPresent(userProfile -> {
-            messages.add(userProfile);
-        });
-
-        String summary = summarizeProfile(messages);
+        List<String> promptMessages = preparePromptMessages(conversationId, messages);
+        String summary = summarizeProfile(promptMessages);
         if (summary == null || summary.isBlank()) {
             return;
         }
 
         userProfileRepository.save(new UserProfile(conversationId, summary.trim(), LocalDateTime.now()));
+    }
 
-        // Delete earliest messages after summarization to keep the profile up to date with recent interactions and prevent the profile from being based on stale data
-        jdbcTemplate.update(
-                "DELETE FROM SPRING_AI_CHAT_MEMORY WHERE CONVERSATION_ID = ? AND CONTENT IN (SELECT CONTENT FROM SPRING_AI_CHAT_MEMORY WHERE CONVERSATION_ID = ? ORDER BY TIMESTAMP ASC FETCH FIRST 10 ROWS ONLY)",
-                conversationId, conversationId);
+    private List<String> preparePromptMessages(String conversationId, List<String> messages) {
+        List<String> promptMessages = new ArrayList<>(messages);
+        getUserProfileSummary(conversationId).ifPresent(promptMessages::add);
+        return promptMessages;
     }
 
     private List<String> loadEarliestMessages(String conversationId) {
-        return jdbcTemplate.query(
-                "SELECT CONTENT FROM SPRING_AI_CHAT_MEMORY WHERE CONVERSATION_ID = ? ORDER BY TIMESTAMP ASC FETCH FIRST 10 ROWS ONLY",
-                (rs, rowNum) -> rs.getString("CONTENT"),
-                conversationId);
+        return chatMemoryRepository.findByConversationId(conversationId).stream()
+                .limit(10)
+                .map(org.springframework.ai.chat.messages.Message::getText)
+                .collect(Collectors.toList());
     }
 
-    private String summarizeProfile(List<String> messages) {
-        String chatHistory = String.join("\n", messages);
+    private String summarizeProfile(List<String> promptMessages) {
+        String chatHistory = String.join("\n", promptMessages);
         String prompt = "Extract the user's names, interests, hobbies, and basic profile information from the following conversation history. " +
                 "Return a concise summary of user tags and characteristics.\n\nConversation:\n" + chatHistory;
 
